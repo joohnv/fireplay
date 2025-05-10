@@ -6,6 +6,7 @@ import { Game } from "./interfaces/game.interface";
 import { addToFavorites, removeFromFavorites, addToCart, removeFromCart, getFavoriteGames, getCart } from "./lib/firestore";
 import SearchBar from "./components/SearchBar";
 import { useAuth } from "./context/AuthContext";
+import Image from "next/image";
 
 export default function HomePage() {
   const [games, setGames] = useState<Game[]>([]);
@@ -50,28 +51,14 @@ export default function HomePage() {
   const handleAddToFavorites = async (game: Game) => {
     if (user) {
       await addToFavorites(user.uid, game);
-      setFavoriteGames(prev => [...prev, game.id]); // Actualizar el estado local con el nuevo favorito
-    }
-  };
-
-  const handleRemoveFromFavorites = async (gameId: number) => {
-    if (user) {
-      await removeFromFavorites(user.uid, gameId);
-      setFavoriteGames(prev => prev.filter(id => id !== gameId)); // Actualizar el estado local
+      setFavoriteGames((prev) => [...prev, game.id]); // Actualizar el estado local con el nuevo favorito
     }
   };
 
   const handleAddToCart = async (game: Game) => {
     if (user) {
       await addToCart(user.uid, game);
-      setCartGames(prev => [...prev, game.id]); // Actualizar el estado local con el nuevo juego en el carrito
-    }
-  };
-
-  const handleRemoveFromCart = async (gameId: number) => {
-    if (user) {
-      await removeFromCart(user.uid, gameId);
-      setCartGames(prev => prev.filter(id => id !== gameId)); // Actualizar el estado local
+      setCartGames((prev) => [...prev, game.id]); // Actualizar el estado local con el nuevo juego en el carrito
     }
   };
 
@@ -90,9 +77,11 @@ export default function HomePage() {
               key={game.id}
               className="bg-zinc-900 rounded-xl overflow-hidden shadow hover:shadow-xl transition"
             >
-              <img
+              <Image
                 src={game.background_image}
                 alt={game.name}
+                width={400}
+                height={240}
                 className="w-full h-48 object-cover"
               />
               <div className="p-4 space-y-2">
