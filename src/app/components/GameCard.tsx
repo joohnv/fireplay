@@ -1,25 +1,21 @@
-'use client';
+"use client";
 
-import { Game } from "../interfaces/game.interface";
 import { useFavoritos } from "../hooks/useFavorites";
 import { Heart } from "lucide-react";
 import Image from "next/image";
+import { Game } from "../interfaces/game.interface";
 
-interface GameCardProps {
-  game: Game;
-}
-
-export default function GameCard({ game }: GameCardProps) {
+export default function GameCard({ game }: { game: Game }) { 
   const { toggleFavorito, isFavorito } = useFavoritos();
 
   return (
     <div className="relative bg-zinc-800 rounded-lg p-4 shadow hover:scale-105 transition">
-      <Image
-        src={game.background_image}
-        alt={game.name}
-        width={400}
-        height={225}
-        className="rounded mb-2 w-full h-auto object-cover"
+      <Image 
+        src={game.background_image} 
+        alt={game.name} 
+        width={400} 
+        height={240} 
+        className="rounded mb-2"
       />
       <h2 className="text-lg font-semibold">{game.name}</h2>
 
