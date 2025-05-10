@@ -1,103 +1,122 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useState } from "react";
+import { fetchGames, getPopularGames } from "./lib/rawg";
+import { Game } from "./interfaces/game.interface";
+import { addToFavorites, removeFromFavorites, addToCart, removeFromCart, getFavoriteGames, getCart } from "./lib/firestore";
+import SearchBar from "./components/SearchBar";
+import { useAuth } from "./context/AuthContext";
+
+export default function HomePage() {
+  const [games, setGames] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const { user } = useAuth();
+  const [favoriteGames, setFavoriteGames] = useState<number[]>([]);
+  const [cartGames, setCartGames] = useState<number[]>([]); // Solo almacenamos los IDs
+
+  useEffect(() => {
+    const loadGames = async () => {
+      setLoading(true);
+      try {
+        const data = query.trim()
+          ? await fetchGames(query)
+          : await getPopularGames();
+        setGames(data);
+      } catch (error) {
+        console.error("Error al cargar juegos: ", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadGames();
+  }, [query]);
+
+  useEffect(() => {
+    if (user) {
+      // Cargar los favoritos y carrito del usuario desde Firestore
+      const loadUserData = async () => {
+        const userFavorites = await getFavoriteGames(user.uid);
+        const userCart = await getCart(user.uid);
+        setFavoriteGames(userFavorites.map((game) => game.id)); 
+        setCartGames(userCart); 
+      };
+
+      loadUserData();
+    }
+  }, [user]);
+
+  const handleAddToFavorites = async (game: Game) => {
+    if (user) {
+      await addToFavorites(user.uid, game);
+      setFavoriteGames(prev => [...prev, game.id]); // Actualizar el estado local con el nuevo favorito
+    }
+  };
+
+  const handleRemoveFromFavorites = async (gameId: number) => {
+    if (user) {
+      await removeFromFavorites(user.uid, gameId);
+      setFavoriteGames(prev => prev.filter(id => id !== gameId)); // Actualizar el estado local
+    }
+  };
+
+  const handleAddToCart = async (game: Game) => {
+    if (user) {
+      await addToCart(user.uid, game);
+      setCartGames(prev => [...prev, game.id]); // Actualizar el estado local con el nuevo juego en el carrito
+    }
+  };
+
+  const handleRemoveFromCart = async (gameId: number) => {
+    if (user) {
+      await removeFromCart(user.uid, gameId);
+      setCartGames(prev => prev.filter(id => id !== gameId)); // Actualizar el estado local
+    }
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <main className="p-6 bg-zinc-950 text-white min-h-screen">
+      <h1 className="text-3xl font-bold mb-6">🎮 Juegos populares</h1>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <SearchBar onSearch={setQuery} />
+
+      {loading ? (
+        <p>Cargando...</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+          {games.map((game) => (
+            <div
+              key={game.id}
+              className="bg-zinc-900 rounded-xl overflow-hidden shadow hover:shadow-xl transition"
+            >
+              <img
+                src={game.background_image}
+                alt={game.name}
+                className="w-full h-48 object-cover"
+              />
+              <div className="p-4 space-y-2">
+                <h2 className="text-xl font-semibold">{game.name}</h2>
+                <p className="text-sm text-zinc-400">⭐ {game.rating}</p>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => handleAddToFavorites(game)}
+                    className="bg-pink-600 px-3 py-1 rounded text-sm"
+                  >
+                    {favoriteGames.includes(game.id) ? "❤️ En favoritos" : "❤️ Añadir a favoritos"}
+                  </button>
+                  <button
+                    onClick={() => handleAddToCart(game)}
+                    className="bg-green-600 px-3 py-1 rounded text-sm"
+                  >
+                    {cartGames.includes(game.id) ? "🛒 En carrito" : "🛒 Añadir al carrito"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      )}
+    </main>
   );
 }
